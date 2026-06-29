@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Training artifacts
+checkpoints*/
+exp_runs/
+transfer_comparisons/
+runs/
+logs/
+wandb/
+
+# Model weights
+*.pth
+*.pt
+*.ckpt
+*.onnx
+
+# Large datasets
+*.h5
+*.hdf5
+*.mseed
+*.sac
+*.npz
+*.npy
+data/
+datasets/
+
+# Generated candidates and temporary figures
+full_grid_candidates/
+pwave_candidates_500/
+envelope_previews/
+named_trace/
+tmp/
+tmp_csv/
+
+# Local documents and system files
+*.docx
+*.pdf
+*.log
+*.pid
+.DS_Store
+Thumbs.db
