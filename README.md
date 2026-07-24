@@ -1,4 +1,4 @@
-# PCD-Net: Prototype-Conditioned Denoising for Microseismic Signals
+# PCD-Net: Prototype-guided Cross-domain Adaptation Network for Robust Time-series Denoising
 
 This repository contains the implementation and experiment scripts for PCD-Net,
 a prototype-conditioned adaptive denoising network for microseismic and seismic
