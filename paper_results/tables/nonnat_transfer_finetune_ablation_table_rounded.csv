@@ -1,6 +1,0 @@
-﻿Fine-tuning strategy,Delta SNR (dB),CC,RMSE,ST-MAE,Adaptive Delta SNR (dB),Adaptive CC,Effective steps,Early-stop rate
-All Frozen,-13.0024,0.2013,0.4099,0.2639,-9.1019,0.3259,2.8303,0.4116
-Noise Encoder,8.4220,0.7055,0.0393,0.0281,5.1439,0.6753,1.8414,0.7763
-Prototype-Feedback,8.9608,0.7121,0.0374,0.0266,5.1388,0.6739,1.7022,0.8225
-PCD Adaptation,10.9777,0.7831,0.0298,0.0210,5.9702,0.7151,1.6762,0.8544
-Full Fine-tuning,10.6104,0.7740,0.0302,0.0214,5.8005,0.7111,1.6274,0.8739
