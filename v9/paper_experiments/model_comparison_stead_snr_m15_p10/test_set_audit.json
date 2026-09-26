@@ -1,0 +1,163 @@
+{
+  "protocol": {
+    "event_h5": "E:/p_wave/data/chunk2.hdf5",
+    "event_csv": "v5/v7_seed0_val.csv",
+    "noise_h5": "E:/p_wave/data/chunk1.hdf5",
+    "noise_csv": "E:/p_wave/data/chunk1.csv",
+    "context_source": "pre_event",
+    "snr_min_db": -15.0,
+    "snr_max_db": 10.0,
+    "max_samples": 2000,
+    "signal_len": 6000,
+    "cond_len": 400,
+    "noise_boost": 1.0,
+    "st_window": 100,
+    "fs": 100.0,
+    "sta_len": 0.5,
+    "lta_len": 10.0,
+    "stalta_thr": 2.0,
+    "pick_tol": 50,
+    "seed": 0
+  },
+  "snr_groups": {
+    "labels": [
+      "<-5",
+      "-5~0",
+      "0~5",
+      "5~10",
+      "10~15",
+      ">15"
+    ],
+    "edges": [
+      -Infinity,
+      -5,
+      0,
+      5,
+      10,
+      15,
+      Infinity
+    ]
+  },
+  "n_test_samples": 2000,
+  "methods": {
+    "PCD-Net": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": "v9/experiments/snr_m15_p10_seed0/best_model_v9.pth",
+      "checkpoint_sha1_16": "b14c12d50b08398b",
+      "uses_condition": true
+    },
+    "ProtoCondTCN": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": "v7/retrain_snr_m15_p10/ProtoCondTCN_seed0/best_proto_cond_tcn.pth",
+      "checkpoint_sha1_16": "8b7b0ea087fa7de3",
+      "uses_condition": true
+    },
+    "DPRNN": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": "v3/baeslines/checkpoints_snr_m15_p10/dprnn/best_model.pth",
+      "checkpoint_sha1_16": "8b248a4be14bdd02",
+      "uses_condition": false
+    },
+    "Restormer1D": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": "v3/baeslines/checkpoints_snr_m15_p10/restormer1d/best_model.pth",
+      "checkpoint_sha1_16": "ff1d6ce9d7e5a70f",
+      "uses_condition": false
+    },
+    "DeepDenoiser": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": "v3/baeslines/checkpoints_snr_m15_p10/deep_denoiser/best_model.pth",
+      "checkpoint_sha1_16": "251f0a6e44046569",
+      "uses_condition": false
+    },
+    "Wavelet": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": null,
+      "checkpoint_sha1_16": null,
+      "uses_condition": false
+    },
+    "Bandpass": {
+      "N": 2000,
+      "snr_in_mean": -2.436838883369408,
+      "snr_in_min": -14.992199120724909,
+      "snr_in_max": 9.999644706539442,
+      "snr_group_counts": {
+        "<-5": 778,
+        "-5~0": 434,
+        "0~5": 374,
+        "5~10": 414,
+        "10~15": 0,
+        ">15": 0
+      },
+      "checkpoint": null,
+      "checkpoint_sha1_16": null,
+      "uses_condition": false
+    }
+  }
+}

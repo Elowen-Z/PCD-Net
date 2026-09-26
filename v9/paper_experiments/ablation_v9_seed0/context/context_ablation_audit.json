@@ -1,0 +1,18 @@
+{
+  "checkpoint": "v9/experiments/snr_m15_p10_seed0/best_model_v9.pth",
+  "checkpoint_sha1_16": "b14c12d50b08398b",
+  "event_csv": "v5/v7_seed0_val.csv",
+  "context_source": "pre_event",
+  "input_snr_db": [
+    -15.0,
+    10.0
+  ],
+  "seed": 0,
+  "samples": 2000,
+  "definitions": {
+    "correct": "the pre-event segment from the same waveform",
+    "shuffled": "a one-position cyclic permutation within each batch",
+    "random": "Gaussian context matched per sample and channel in mean and standard deviation",
+    "none": "an all-zero context"
+  }
+}

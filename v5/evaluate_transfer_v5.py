@@ -75,7 +75,8 @@ class EvalDataset(Dataset):
                  noise_h5_path, noise_csv_path,
                  signal_len=6000, cond_len=400,
                  snr_db_range=(-15.0, 10.0),
-                 noise_boost=1.0, max_samples=None, seed=42):
+                 noise_boost=1.0, max_samples=None, seed=42,
+                 context_source="paired_noise"):
         self.event_h5_path = event_h5_path
         self.noise_h5_path = noise_h5_path
         self.signal_len    = signal_len
@@ -83,6 +84,14 @@ class EvalDataset(Dataset):
         self.snr_db_range  = snr_db_range
         self.noise_boost   = float(noise_boost)
         self.seed          = int(seed)
+        # "paired_noise"  : 旧行为, z_cond 取自 chunk1 噪声 (PCD-Net V9 之外的历史口径)
+        # "pre_event"     : z_cond 取自同一条含噪波形的 P 到时前背景段,
+        #                   与 STEADDatasetV3 / PCD-Net V9 的训练口径一致
+        if context_source not in {"pre_event", "paired_noise"}:
+            raise ValueError(
+                "context_source must be 'pre_event' or 'paired_noise'"
+            )
+        self.context_source = str(context_source)
         self._ev_h5        = None
         self._no_h5        = None
         self._last_p_rel   = 0
@@ -180,7 +189,17 @@ class EvalDataset(Dataset):
         noisy_base = self._mix_snr(clean, noise, snr_db_val)
         noisy = clean + self.noise_boost * (noisy_base - clean)
 
-        z_cond = noise[:, :self.cond_len].copy()
+        if self.context_source == "pre_event":
+            # 与 v3.dataset_v3.extract_pre_event_context 完全一致:
+            # 取含噪波形 P 到时之前的 cond_len 个采样点, 不足则在前面补零。
+            stop = int(np.clip(p_rel, 0, self.signal_len))
+            start = max(0, stop - self.cond_len)
+            z_cond = np.zeros((noisy.shape[0], self.cond_len), dtype=np.float32)
+            segment = noisy[:, start:stop]
+            if segment.shape[1] > 0:
+                z_cond[:, -segment.shape[1]:] = segment
+        else:
+            z_cond = noise[:, :self.cond_len].copy()
         m = np.abs(z_cond).max()
         if m > 1e-10:
             z_cond = z_cond / m
