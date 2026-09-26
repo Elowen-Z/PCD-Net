@@ -24,14 +24,15 @@ from v7.model_v7 import NoiseAwareDenoiserV7
 
 
 DEFAULT_CONFIG = {
-    "event_h5": "D:/X/p_wave/data/chunk2.hdf5",
-    "event_csv": "D:/X/p_wave/data/chunk2.csv",
-    "noise_h5": "D:/X/p_wave/data/chunk1.hdf5",
-    "noise_csv": "D:/X/p_wave/data/chunk1.csv",
+    "event_h5": "E:/p_wave/data/chunk2.hdf5",
+    "event_csv": "E:/p_wave/data/chunk2.csv",
+    "noise_h5": "E:/p_wave/data/chunk1.hdf5",
+    "noise_csv": "E:/p_wave/data/chunk1.csv",
     "raw_h5": None,
     "raw_csv": None,
     "signal_len": 6000,
     "cond_len": 400,
+    "context_source": "pre_event",
     "z_dim": 128,
     "num_prototypes": 16,
     "top_m": 4,
@@ -61,6 +62,8 @@ DEFAULT_CONFIG = {
     "alpha_balance": 0.02,
     "alpha_quality": 0.20,
     "alpha_intermediate": 0.10,
+    "quality_temperature": 1.0,
+    "zero_noise_condition": False,
     "valid_weight": 3.0,
     "bg_weight": 0.3,
     "stop_threshold": 0.95,
@@ -97,11 +100,14 @@ def configure_cuda_backend(cuda_safe: bool) -> None:
         )
 
 
-def _move_batch(batch, device):
-    return {
+def _move_batch(batch, device, zero_noise_condition=False):
+    moved = {
         key: batch[key].to(device, non_blocking=True)
         for key in ("x", "y_clean", "z_cond", "valid_mask", "has_target")
     }
+    if zero_noise_condition:
+        moved["z_cond"] = torch.zeros_like(moved["z_cond"])
+    return moved
 
 
 def _loss_call(criterion, output, batch):
@@ -146,7 +152,11 @@ def train_epoch(
     )
 
     for batch_index, batch_raw in enumerate(loader, start=1):
-        batch = _move_batch(batch_raw, device)
+        batch = _move_batch(
+            batch_raw,
+            device,
+            zero_noise_condition=cfg.get("zero_noise_condition", False),
+        )
         if not all(
             torch.isfinite(batch[k]).all()
             for k in ("x", "y_clean", "z_cond")
@@ -214,7 +224,14 @@ def train_epoch(
 
 
 @torch.no_grad()
-def validate(model, loader, criterion, device, st_window=100):
+def validate(
+    model,
+    loader,
+    criterion,
+    device,
+    st_window=100,
+    zero_noise_condition=False,
+):
     model.eval()
     total, count = 0.0, 0
     gains, correlations, quality_values, fidelity_values = [], [], [], []
@@ -226,7 +243,11 @@ def validate(model, loader, criterion, device, st_window=100):
     effective_steps, stopped_early = [], []
 
     for batch_raw in loader:
-        batch = _move_batch(batch_raw, device)
+        batch = _move_batch(
+            batch_raw,
+            device,
+            zero_noise_condition=zero_noise_condition,
+        )
         # Always unfold every pass for stable checkpoint selection. Adaptive
         # deployment metrics are reconstructed from the per-pass histories.
         output = model(batch["x"], batch["z_cond"], adaptive_stop=False)
@@ -409,25 +430,32 @@ def make_loaders(cfg, dataset_type):
         cfg["event_csv"],
         cfg["val_frac"],
         cfg["seed"],
-        prefix=f"v7_seed{cfg['seed']}",
+        prefix=cfg.get("split_prefix", f"v7_seed{cfg['seed']}"),
     )
     dataset_cls = MiningDatasetV6 if dataset_type == "mining" else STEADDatasetV3
 
     def make_dataset(csv_path, training):
-        return dataset_cls(
-            event_h5_path=cfg["event_h5"],
-            event_csv_path=csv_path,
-            noise_h5_path=cfg["noise_h5"],
-            noise_csv_path=cfg["noise_csv"],
-            raw_h5_path=cfg["raw_h5"],
-            raw_csv_path=cfg["raw_csv"],
-            signal_len=cfg["signal_len"],
-            cond_len=cfg["cond_len"],
-            snr_range=cfg["snr_range"],
-            clean_prob=cfg["clean_prob"] if training else 0.0,
-            part_b_ratio=cfg["part_b_ratio"] if training else 0.0,
-            seed=cfg["seed"],
-        )
+        kwargs = {
+            "event_h5_path": cfg["event_h5"],
+            "event_csv_path": csv_path,
+            "noise_h5_path": cfg["noise_h5"],
+            "noise_csv_path": cfg["noise_csv"],
+            "raw_h5_path": cfg["raw_h5"],
+            "raw_csv_path": cfg["raw_csv"],
+            "signal_len": cfg["signal_len"],
+            "cond_len": cfg["cond_len"],
+            "snr_range": cfg["snr_range"],
+            "clean_prob": cfg["clean_prob"] if training else 0.0,
+            "part_b_ratio": cfg["part_b_ratio"] if training else 0.0,
+            "seed": cfg["seed"],
+            "context_source": cfg["context_source"],
+            "snr_sampling": cfg.get("snr_sampling", "linear"),
+        }
+        if dataset_type == "mining":
+            kwargs["eval_mode"] = not training
+        else:
+            kwargs["snr_sampling"] = cfg.get("snr_sampling", "linear")
+        return dataset_cls(**kwargs)
 
     train_ds = make_dataset(train_csv, True)
     val_ds = make_dataset(val_csv, False)
@@ -470,10 +498,24 @@ def build_parser():
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--lr", type=float)
     parser.add_argument("--num_workers", type=int)
+    parser.add_argument("--cond_len", type=int)
+    parser.add_argument(
+        "--context_source",
+        choices=["pre_event", "paired_noise"],
+        default=None,
+    )
     parser.add_argument("--num_prototypes", type=int)
     parser.add_argument("--top_m", type=int)
     parser.add_argument("--n_refine", type=int)
     parser.add_argument("--base_ch", type=int)
+    parser.add_argument("--vq_temperature", type=float)
+    parser.add_argument(
+        "--quality_temperature",
+        "--tau_q",
+        dest="quality_temperature",
+        type=float,
+        help="temperature used to construct quality-head targets",
+    )
     parser.add_argument("--alpha_sparse", type=float)
     parser.add_argument("--alpha_balance", type=float)
     parser.add_argument("--alpha_quality", type=float)
@@ -494,6 +536,7 @@ def build_parser():
     parser.add_argument("--no_quality_head", action="store_true")
     parser.add_argument("--no_residual_feedback", action="store_true")
     parser.add_argument("--no_adaptive_inference", action="store_true")
+    parser.add_argument("--zero_noise_condition", action="store_true")
     parser.add_argument("--event_h5")
     parser.add_argument("--event_csv")
     parser.add_argument("--noise_h5")
@@ -518,13 +561,14 @@ def main():
     cfg = dict(DEFAULT_CONFIG)
     cfg["seed"] = args.seed
     for key in (
-        "epochs", "batch_size", "lr", "num_workers", "num_prototypes",
-        "top_m", "n_refine", "base_ch", "alpha_sparse", "alpha_balance",
-        "alpha_quality", "alpha_intermediate", "stop_threshold",
+        "epochs", "batch_size", "lr", "num_workers", "cond_len",
+        "num_prototypes", "top_m", "n_refine", "base_ch",
+        "vq_temperature", "quality_temperature", "alpha_sparse",
+        "alpha_balance", "alpha_quality", "alpha_intermediate", "stop_threshold",
         "min_refine_steps", "print_every", "checkpoint_every", "event_h5",
         "val_batch_size", "val_num_workers", "st_window", "event_csv",
         "train_samples", "val_samples", "noise_h5",
-        "noise_csv", "raw_h5", "raw_csv",
+        "noise_csv", "raw_h5", "raw_csv", "context_source",
     ):
         value = getattr(args, key)
         if value is not None:
@@ -535,6 +579,7 @@ def main():
     cfg["use_quality_head"] = not args.no_quality_head
     cfg["use_residual_feedback"] = not args.no_residual_feedback
     cfg["adaptive_inference"] = not args.no_adaptive_inference
+    cfg["zero_noise_condition"] = args.zero_noise_condition
     cfg["use_amp"] = cfg["use_amp"] and not args.no_amp
     if args.amp_dtype is not None:
         cfg["amp_dtype"] = args.amp_dtype
@@ -590,7 +635,7 @@ def main():
                 "alpha_mse", "alpha_freq", "alpha_grad", "alpha_detect",
                 "alpha_vq_commit", "alpha_vq_diversity", "alpha_sparse",
                 "alpha_balance", "alpha_quality", "valid_weight", "bg_weight",
-                "alpha_intermediate",
+                "alpha_intermediate", "quality_temperature",
             )
         }
     )
@@ -694,7 +739,12 @@ def main():
             flush=True,
         )
         metrics = validate(
-            model, val_loader, criterion, device, cfg["st_window"]
+            model,
+            val_loader,
+            criterion,
+            device,
+            cfg["st_window"],
+            zero_noise_condition=cfg.get("zero_noise_condition", False),
         )
         scheduler.step()
         row = {
